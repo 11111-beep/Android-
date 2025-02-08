@@ -78,22 +78,16 @@ try {
 
 ### **`try-catch-finally` 的完整流程**
 
-1. 执行 `try` 块
-
-   ：
+1. 执行 `try` 块：
 
    - 如果 `try` 块中的代码没有抛出异常，`catch` 块会被跳过，接着执行 `finally` 块。
    - 如果 `try` 块中的代码抛出了异常，程序会跳转到匹配的 `catch` 块执行，`finally` 块会被执行。
-
-2. 执行 `catch` 块
-
-   ：
+   
+2. 执行 `catch` 块：
 
    - 如果有异常发生并且与某个 `catch` 块中的异常类型匹配，该 `catch` 块会处理异常。多个 `catch` 块可以用来捕获不同类型的异常。
 
-3. 执行 `finally` 块
-
-   ：
+3. 执行 `finally` 块：
 
    - `finally` 块会在 `try` 和 `catch` 完成后执行，无论是否发生异常。即使在 `try` 或 `catch` 块中调用了 `return` 语句，`finally` 也会执行。
 
