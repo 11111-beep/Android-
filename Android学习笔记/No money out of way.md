@@ -2987,7 +2987,7 @@ public class MainActivity extends AppCompatActivity {
 
 3.调用initMediaPlayer()进行初始化
 
-![IMG_20250207_183552_edit_1021265644798329](images/IMG_20250207_183552_edit_1021265644798329.jpg)
+![MediaPlayer操作](images/MediaPlayer操作.jpg)
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -3131,6 +3131,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 2.动态申请权限
 
 3.调用initVideoPath()进行初始化
+
+![VideoView操作](images/VideoView操作.jpg)
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
