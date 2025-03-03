@@ -971,6 +971,7 @@ public class MyBroadcastReceiver extends BroadcastReceiver {
             @Override
             public void onClick(View v) {
                 Intent intent=new Intent("com.example.broadcasttest.MY_BROADCAST");
+                intent.setPackage(getPackageName());
                 sendBroadcast(intent);
             }
         });
@@ -1451,7 +1452,7 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
 
 
 
-### ==CRUD==:  **Create（创建）**、**Read（读取）**、**Update（更新）** 和 **Delete（删除）**
+### CRUD:  **Create（创建）**、**Read（读取）**、**Update（更新）** 和 **Delete（删除）**
 
 ### 添加数据
 
@@ -3302,4 +3303,2286 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 ```
 
 ---
+
+
+
+## WebView的用法
+
+可以用WebView嵌入一个游览器
+
+1.在activity_main.xml导入WebView控件
+
+2.在MainActivity获取实例,并用getSettings设置属性
+
+3.用setWebViewClient使目标网页在WebView显示
+
+4.加入权限并加开http的读取(也可以直接使用更稳定的https连接)
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <WebView
+        android:id="@+id/web_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
+</LinearLayout>
+```
+
+```java
+public class MainActivity extends AppCompatActivity {
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        WebView webView =(WebView) findViewById(R.id.web_view);
+        webView.getSettings().setJavaScriptEnabled(true); // 让WebView支持JavaScript脚本
+        webView.setWebViewClient(new WebViewClient()); // 使目标网页在WebView显示
+        webView.loadUrl("https://www.baidu.com/");
+    }
+}
+```
+
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <application
+        android:usesCleartextTraffic="true"
+```
+
+
+
+## 运用HTTP协议访问网络
+
+### 使用HttpURLConnection
+
+1.调用sendRequestWithHttpURLConnection()方法开启子线程,并使用HttpURLConnection发出HTTP请求
+
+2.利用BufferedReader对服务器返回的流进行读取,并将结果传到showResponse方法中
+
+3.在showResponse里通过runOnUiThread将线程切换到主线程,然后更新UI元素
+
+```java
+/**
+ * 主活动类，展示如何通过HttpURLConnection发送网络请求
+ */
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+
+    TextView responseText; // 用于显示服务器响应的文本视图
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        // 设置内容视图
+        setContentView(R.layout.activity_main);
+
+        // 初始化按钮和文本视图
+        Button sendRequest = findViewById(R.id.send_request);
+        responseText = findViewById(R.id.response_text);
+
+        // 设置按钮的点击监听器
+        sendRequest.setOnClickListener(this);
+    }
+
+    @Override
+    public void onClick(View v) {
+        // 判断是否是发送请求按钮的点击事件
+        if (v.getId() == R.id.send_request) {
+            // 调用发送请求的方法
+            sendRequestWithHttpURLConnection();    
+        }
+    }
+
+    /**
+     * 使用HttpURLConnection发送网络请求
+     * 在子线程中执行网络操作，避免阻塞主线程
+     */
+    private void sendRequestWithHttpURLConnection() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                HttpURLConnection connection = null;
+                BufferedReader reader = null;
+                InputStream in = null;
+                try {
+                    // 创建URL对象
+                    URL url = new URL("https://www.baidu.com");
+                    // 打开HTTP连接
+                    connection = (HttpURLConnection) url.openConnection();
+                    // 设置请求方法为GET
+                    
+                    /*
+                    GET:从服务器获取数据
+                    POST:提交数据给服务器
+                    */
+                    
+                    connection.setRequestMethod("GET");
+                    // 设置连接超时时间（单位：毫秒）
+                    connection.setConnectTimeout(8000);
+                    // 设置读取超时时间（单位：毫秒）
+                    connection.setReadTimeout(8000);
+
+                    // 获取输入流，读取服务器响应内容
+                    in = connection.getInputStream();
+                    reader = new BufferedReader(new InputStreamReader(in));
+
+                    // 读取响应内容
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
+
+                    // 更新UI显示响应内容
+                    showResponse(response.toString());
+
+                } catch (MalformedURLException e) {
+                    // URL格式错误异常
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    // 网络IO异常
+                    e.printStackTrace();
+                } finally {
+                    // 确保释放资源
+                    try {
+                        if (reader != null) {
+                            reader.close();
+                        }
+                        if (in != null) {
+                            in.close();
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    if (connection != null) {
+                        connection.disconnect();
+                    }
+                }
+            }
+        }).start();
+    }
+
+    /**
+     * 在主线程中更新UI，显示服务器响应内容
+     * @param response 服务器响应的内容
+     */
+    private void showResponse(final String response) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                // 更新文本视图显示响应内容
+                responseText.setText(response);
+            }
+        });
+    }
+}
+```
+
+---
+
+
+
+## 服务(Service)
+
+### Android多线程编程
+
+```java
+new Thread(new Runnable(){
+    @Override
+    public void run(){
+        // 处理具体的逻辑
+    }
+}).start();
+```
+
+### 在子线程中更新UI
+
+如果想要更新程序里的UI元素必须在主线程中进行(UI线程不安全)
+
+1.在主线程进行操作
+
+2.在子线程进行回调
+
+```java
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:fitsSystemWindows="true"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <Button
+        android:id="@+id/change_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Change Text" />
+
+    <TextView
+        android:id="@+id/text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:text="Hello world"
+        android:textSize="20sp"/>
+
+</RelativeLayout>
+```
+
+```java
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+
+    // 定义一个常量，用于标识更新文本的消息类型
+    public static final int UPDATE_TEXT = 1;
+
+    // 声明一个TextView对象，用于显示文本
+    private TextView text;
+
+    // 声明一个Handler对象，用于处理线程之间的消息通信
+    private Handler handler = new Handler() {
+        // 重写处理消息的方法
+        public void handleMessage(Message msg) {
+            // 判断消息类型，如果是UPDATE_TEXT类型，则更新文本
+            if (msg.what == UPDATE_TEXT) {
+                text.setText("Nice to meet you");
+            }
+        }
+    };
+
+    // activity创建时的回调方法
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        // 调用父类的 onCreate 方法
+        super.onCreate(savedInstanceState);
+        // 加载布局文件
+        setContentView(R.layout.activity_main);
+        // 通过ID找到TextView对象，并赋值给text变量
+        text = (TextView) findViewById(R.id.text);
+        // 通过ID找到Button对象
+        Button changeText = (Button) findViewById(R.id.change_text);
+        // 为Button设置点击监听器
+        changeText.setOnClickListener(this);
+    }
+
+    // OnClickListener接口的回调方法，处理点击事件
+    @Override
+    public void onClick(View v) {
+        // 判断点击的View是否是change_text按钮
+        if (v.getId() == R.id.change_text) {
+            // 启动一个新的线程
+            new Thread(new Runnable() {
+                // 线程的run方法
+                @Override
+                public void run() {
+                    // 创建一个消息对象
+                    Message message = new Message();
+                    // 设置消息类型为UPDATE_TEXT
+                    message.what = UPDATE_TEXT;
+                    // 通过Handler发送消息到主线程
+                    handler.sendMessage(message);
+                }
+            }).start();
+        }
+    }
+}
+```
+
+### 异步消息处理机制
+
+1. #### **Handler**：
+
+   - **定义**：Handler是一个接口，用于在不同线程之间发送和处理消息。
+   - **功能**：通过Handler，可以将消息或Runnable对象发送到与之绑定的Looper所在的线程，处理消息或执行任务。
+   - **使用场景**：常用于更新UI，因为Android不允许在子线程直接修改UI，需要通过Handler将UI操作发送到主线程执行。
+
+2. #### **Message**：
+
+   - **定义**：Message是Handler处理的消息对象，用于封装需要传递的数据。
+   - **功能**：Message可以包含数据和标识信息，通过Handler发送到目标线程，供相应的处理逻辑使用。
+   - **使用场景**：当需要在不同线程之间传递数据时，使用Message来封装数据，并通过Handler发送。
+
+3. #### **Runnable**：
+
+   - **定义**：Runnable是一个接口，表示可以被执行的任务。
+   - **功能**：通过实现Runnable的run方法，可以定义需要在不同线程执行的任务。Handler可以通过post方法执行Runnable。
+   - **使用场景**：当需要在子线程执行某些任务，并通过Handler在主线程更新UI时，使用Runnable定义任务。
+
+4. #### **Looper**：
+
+   - **定义**：Looper是消息队列的管理者，负责不断地从消息队列中取出消息，并分发给相应的Handler处理。
+   - **功能**：每个线程如果需要处理消息，必须有一个Looper，它会运行一个无限循环，处理消息队列中的消息。
+   - **使用场景**：主线程默认有一个Looper，子线程如果需要使用Handler处理消息，必须手动创建Looper并启动消息循环。
+
+
+
+### 服务的基本用法
+
+1.启动服务(onCreate()在第一次执行,onStartCommand()每次启动都执行)
+
+2.停止服务(在服务里的任何位置调用stopSelf()也可以停止服务)
+
+3.绑定服务与解绑服务 : 
+
+在服务里创建一个新的Binder对象(新建一个内部类继承自Binder).
+
+在活动中创建一个ServiceConnection的匿名类,并重写onServiceConnected(绑定调用)与onServiceDisconnected(解绑调用)方法
+
+调用bindService和unbindService方法
+
+
+
+```java
+
+/**
+ * MyService是一个Android服务类，用于演示服务的基本使用和生命周期管理。
+ * 该服务提供了绑定接口，允许活动与服务进行交互。
+ */
+public class MyService extends Service {
+    // 用于与活动交互的Binder实例
+    private DownloadBinder mBinder = new DownloadBinder();
+    // 日志标签，用于输出日志信息
+    public static final String TAG = "Myservice";
+
+    /**
+     * DownloadBinder是一个Binder内部类，提供了服务的接口方法。
+     * 通过该Binder，活动可以调用服务的方法。
+     */
+    class DownloadBinder extends Binder {
+        /**
+         * 开始下载的方法。
+         * 当前仅输出日志信息，具体下载逻辑需在此实现。
+         */
+        public void startDownload() {
+            Log.d(TAG, "startDownload: executed");
+        }
+
+        /**
+         * 获取下载进度的方法。
+         * 当前返回0，具体实现需根据实际下载进度来返回。
+         *
+         * @return 下载进度，范围0-100
+         */
+        public int getProgress() {
+            Log.d(TAG, "getProgress: executed");
+            return 0;
+        }
+    }
+
+    /**
+     * 服务构造方法。
+     * Android服务的构造方法，不建议在此进行耗时操作。
+     */
+    public MyService() {
+    }
+
+    /**
+     * onBind方法，返回一个IBinder接口，供活动与服务交互。
+     * 当活动调用bindService()时，系统会调用此方法。
+     *
+     * @param intent 绑定服务的意图
+     * @return 提供给活动的IBinder接口
+     */
+    @Override
+    public IBinder onBind(Intent intent) {
+        // TODO: Return the communication channel to the service.
+        return mBinder;
+    }
+
+    /**
+     * onCreate方法，服务被创建时调用。
+     * 适用于一些一次性初始化的操作。
+     */
+    @SuppressLint("ForegroundServiceType")
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        Log.d(TAG, "onCreate: onCreate executed");
+        // 创建一个intent，用于从通知中启动MainActivity
+        Intent intent = new Intent(this, MainActivity.class);
+        // 创建一个PendingIntent，作为通知的点击处理
+        PendingIntent pi = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    /**
+     * onStartCommand方法，服务被启动时调用。
+     * 适用于 IntentService 或者不需要绑定的服务。
+     * 当服务通过startService()启动时，系统会调用此方法。
+     *
+     * @param intent 启动服务的意图
+     * @param flags  服务启动的标志
+     * @param startId 服务的启动ID
+     * @return 服务的启动行为，常用返回值：
+     *         START_STICKY：服务被杀后，会重新创建
+     *         START_NOT_STICKY：服务被杀后，不会重新创建
+     *         START_REDELIVER_INTENT：服务被杀后，会重新调佣onStartCommand()，并传递最后的intent
+     */
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        // 启动一个新线程，执行一些异步任务
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                // 在新线程中调用stopSelf()，停止服务
+                stopSelf();
+            }
+        }).start();
+        return super.onStartCommand(intent, flags, startId);
+    }
+
+    /**
+     * onDestroy方法，服务被销毁时调用。
+     * 可以在此进行资源的释放和清理操作。
+     */
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        Log.d(TAG, "onDestroy: onDestory executed");
+    }
+}
+```
+
+
+
+```java
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+
+    // 声明一个DownloadBinder类型的变量，用于与服务通信
+    private MyService.DownloadBinder downloadBinder;
+
+    // 定义一个ServiceConnection的匿名类，处理服务连接和断开的情况
+    private ServiceConnection connection = new ServiceConnection() {
+
+        // 当服务连接成功时回调此方法
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            // 将IBinder对象转换为DownloadBinder类型
+            downloadBinder = (MyService.DownloadBinder) service;
+            // 调用DownloadBinder的方法开始下载
+            downloadBinder.startDownload();
+            // 调用DownloadBinder的方法获取下载进度
+            downloadBinder.getProgress();
+        }
+
+        // 当服务断开连接时回调此方法
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            // 此处可以添加断开连接后的处理逻辑
+        }
+    };
+
+    // activity创建时的回调方法
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        // 调用父类的 onCreate 方法
+        super.onCreate(savedInstanceState);
+        // 设置activity的布局文件
+        setContentView(R.layout.activity_main);
+
+        // 检查是否有POST_NOTIFICATIONS权限（适用于Android 13及以上版本）
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                // 如果没有权限，请求权限
+                requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
+            }
+        }
+
+        // 找到布局文件中的按钮，并为它们设置点击监听器
+        Button startService = (Button) findViewById(R.id.start_service);
+        Button stopService = (Button) findViewById(R.id.stop_service);
+        Button startIntentService = (Button) findViewById(R.id.start_intent_service);
+
+        // 为按钮设置点击事件监听器
+        startService.setOnClickListener(this);
+        stopService.setOnClickListener(this);
+        startIntentService.setOnClickListener(this);
+    }
+
+    // OnClickListener接口的回调方法，处理按钮点击事件
+    @Override
+    public void onClick(View v) {
+        // 根据点击的按钮ID执行不同的操作
+        if (v.getId() == R.id.start_service) {
+            // 创建Intent，用于启动MyService服务
+            Intent startIntent = new Intent(this, MyService.class);
+            startService(startIntent); // 启动服务
+        } else if (v.getId() == R.id.stop_service) {
+            // 创建Intent，用于停止MyService服务
+            Intent stopIntent = new Intent(this, MyService.class);
+            stopService(stopIntent); // 停止服务
+        } else if (v.getId() == R.id.bind_service) {
+            // 创建Intent，用于绑定到MyService服务
+            Intent bindIntent = new Intent(this, MyService.class);
+            // 绑定服务，并传入ServiceConnection实例
+            bindService(bindIntent, connection, BIND_AUTO_CREATE);
+        } else if (v.getId() == R.id.unbind_service) {
+            // 解绑服务
+            unbindService(connection);
+        } else if (v.getId() == R.id.start_intent_service) {
+            // 在日志中打印当前线程的ID
+            Log.d("MainActivity", "Thread id is " + Thread.currentThread().getId());
+            // 创建Intent，用于启动MyIntentService服务
+            Intent intentService = new Intent(this, MyIntentService.class);
+            startService(intentService); // 启动服务
+        }
+    }
+}
+
+```
+
+
+
+### IntentService(简单创建异步的,会自动停止的服务)
+
+```java
+public class MyIntentService extends IntentService {
+
+    public static final String TAG = "MyIntentService";
+    public MyIntentService() {
+        super("MyIntentService");
+    }
+
+    @Override
+    protected void onHandleIntent(@Nullable Intent intent) {
+        Log.d(TAG, "Thread id is "+Thread.currentThread().getId());
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        Log.d(TAG, "onDestroy executed");
+    }
+}
+```
+
+```java
+if (v.getId() == R.id.start_intent_service) {
+            // 在日志中打印当前线程的ID
+            Log.d("MainActivity", "Thread id is " + Thread.currentThread().getId());
+            // 创建Intent，用于启动MyIntentService服务
+            Intent intentService = new Intent(this, MyIntentService.class);
+            startService(intentService); // 启动服务
+        }
+```
+
+```xml
+ <service android:name=".MyIntentService" />
+```
+
+
+
+## 服务的最佳实践---完整版的下载实例
+
+1.添加一个OKHttp的依赖
+
+2.定义一个DownloadListener回调接口
+
+3.新建一个DownloadTask继承自AsyncTask:
+
+doInBackground()用于后台执行具体的下载逻辑
+
+onProgressUpdate()用于在界面上更新当前的下载进度
+
+onPostExecute()用于通知最终的下载结果
+
+4.创建DownloadService服务(记得创建通道,用DownloadBinder实现服务与活动之间的通信)
+
+5.修改activity_main.xml
+
+6.修改MainActivity(活动销毁了,一定要记得对服务进行解绑)
+
+7.注册权限
+
+```kts
+implementation("com.squareup.okhttp3:okhttp:4.9.0")
+```
+
+```java3
+public interface DownloadListener {
+    void onProgress(int progress);
+    void onSuccess();
+    void onFailed();
+    void onPaused();
+    void onCanceled();
+}
+
+```
+
+```java
+public class DownloadTask extends AsyncTask<String, Integer, Integer> {
+
+    /**
+     * 下载状态：成功
+     */
+    public static final int TYPE_SUCCESS = 0;
+    /**
+     * 下载状态：失败
+     */
+    public static final int TYPE_FAILED = 1;
+    /**
+     * 下载状态：暂停
+     */
+    public static final int TYPE_PAUSED = 2;
+    /**
+     * 下载状态：取消
+     */
+    public static final int TYPE_CANCELED = 3;
+
+    /**
+     * 下载事件监听器，用于接收下载状态和进度更新
+     */
+    private DownloadListener listener;
+
+    /**
+     * 标记下载是否被取消
+     */
+    private boolean isCanceled = false;
+
+    /**
+     * 标记下载是否被暂停
+     */
+    private boolean isPaused = false;
+
+    /**
+     * 记录最后一次上传的进度值，避免重复更新
+     */
+    private int lastProgress;
+
+    /**
+     * 构造函数，初始化下载监听器
+     *
+     * @param listener 下载事件的回调接口
+     */
+    public DownloadTask(DownloadListener listener) {
+        this.listener = listener;
+    }
+
+    /**
+     * 后台执行下载任务的主方法
+     *
+     * @param params 参数数组，第一个元素为下载 URL
+     * @return 下载状态，取值为 TYPE_SUCCESS、TYPE_FAILED、TYPE_PAUSED、TYPE_CANCELED
+     */
+    @Override
+    protected Integer doInBackground(String... params) {
+        InputStream is = null;
+        RandomAccessFile savedFile = null;
+        File file = null;
+        try {
+            long downloadedLength = 0;
+
+            // 获取下载 URL 和文件名
+            String downloadUrl = params[0];
+            String fileName = downloadUrl.substring(downloadUrl.lastIndexOf("/"));
+
+            // 设置下载目录为公共下载目录
+            String directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getPath();
+            file = new File(directory + fileName);
+
+            // 如果文件已存在，记录已下载的长度
+            if (file.exists()) {
+                downloadedLength = file.length();
+            }
+
+            // 获取文件总长度
+            long contentLength = getContentLength(downloadUrl);
+            if (contentLength == 0) {
+                return TYPE_FAILED;
+            } else if (contentLength == downloadedLength) {
+                return TYPE_SUCCESS;
+            }
+
+            // 发送带有 Range 头的请求，继续断点下载
+            OkHttpClient client = new OkHttpClient();
+            Request request = new Request.Builder()
+                    .addHeader("RANGE", "bytes=" + downloadedLength + "-")
+                    .url(downloadUrl)
+                    .build();
+            Response response = client.newCall(request).execute();
+
+            if (response != null) {
+                is = response.body().byteStream();
+                savedFile = new RandomAccessFile(file, "rw");
+                savedFile.seek(downloadedLength);
+
+                byte[] b = new byte[1024];
+                int total = 0;
+                int len;
+                while ((len = is.read(b)) != -1) {
+                    if (isCanceled) {
+                        return TYPE_CANCELED;
+                    } else if (isPaused) {
+                        return TYPE_PAUSED;
+                    } else {
+                        total += len;
+                        savedFile.write(b, 0, len);
+
+                        // 计算并发布进度
+                        int progress = (int) ((total + downloadedLength) * 100 / contentLength);
+                        publishProgress(progress);
+                    }
+                }
+
+                response.body().close();
+                return TYPE_SUCCESS;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                // 释放资源
+                if (is != null) {
+                    is.close();
+                }
+                if (savedFile != null) {
+                    savedFile.close();
+                }
+                // 如果下载被取消，删除已下载的文件
+                if (isCanceled && file != null) {
+                    file.delete();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return TYPE_FAILED;
+    }
+
+    /**
+     * 在主线程更新下载进度
+     *
+     * @param values 进度数组，第一个元素为当前进度
+     */
+    @Override
+    protected void onProgressUpdate(Integer... values) {
+        int progress = values[0];
+        if (progress > lastProgress) {
+            listener.onProgress(progress);
+            lastProgress = progress;
+        }
+    }
+
+    /**
+     * 在主线程执行下载完成后的处理
+     *
+     * @param status 下载状态，取值为 TYPE_SUCCESS、TYPE_FAILED、TYPE_PAUSED、TYPE_CANCELED
+     */
+    @Override
+    protected void onPostExecute(Integer status) {
+        switch (status) {
+            case TYPE_SUCCESS:
+                listener.onSuccess();
+                break;
+            case TYPE_FAILED:
+                listener.onFailed();
+                break;
+            case TYPE_PAUSED:
+                listener.onPaused();
+                break;
+            case TYPE_CANCELED:
+                listener.onCanceled();
+                break;
+            default:
+                break;
+        }
+    }
+
+    /**
+     * 暂停下载
+     */
+    public void pauseDownload() {
+        isPaused = true;
+    }
+
+    /**
+     * 取消下载
+     */
+    public void cancelDownload() {
+        isCanceled = true;
+    }
+
+    /**
+     * 获取下载文件的总长度
+     *
+     * @param downloadUrl 下载 URL
+     * @return 文件总长度
+     * @throws IOException 网络请求异常
+     */
+    private long getContentLength(String downloadUrl) throws IOException {
+        OkHttpClient client = new OkHttpClient();
+        Request request = new Request.Builder()
+                .url(downloadUrl)
+                .build();
+        Response response = client.newCall(request).execute();
+        if (response != null && response.isSuccessful()) {
+            long contentLength = response.body().contentLength();
+            response.body().close();
+            return contentLength;
+        }
+        return 0;
+    }
+}
+```
+
+
+
+```java
+public class DownloadService extends Service {
+
+    private DownloadTask downloadTask; // 声明下载任务对象，用于执行下载操作
+    private String downloadUrl; // 用于存储下载的URL
+
+    // 创建一个下载监听器，监听下载过程中的不同状态（进度、成功、失败、暂停、取消）
+    private DownloadListener listener = new DownloadListener() {
+        @Override
+        public void onProgress(int progress) {
+            // 在下载过程中更新通知，显示当前的下载进度
+            getNotificationManager().notify(1, getNotification("Downloading...", progress));
+        }
+
+        @Override
+        public void onSuccess() {
+            // 下载成功，停止前台服务并更新通知显示“下载成功”
+            downloadTask = null; // 清空下载任务
+            stopForeground(true); // 停止前台服务
+            getNotificationManager().notify(1, getNotification("Download Success", -1)); // 更新通知，显示“下载成功”
+            Toast.makeText(DownloadService.this, "Download Success", Toast.LENGTH_SHORT).show(); // 弹出Toast提示
+        }
+
+        @Override
+        public void onFailed() {
+            // 下载失败，停止前台服务并更新通知显示“下载失败”
+            downloadTask = null; // 清空下载任务
+            stopForeground(true); // 停止前台服务
+            getNotificationManager().notify(1, getNotification("Download Failed", -1)); // 更新通知，显示“下载失败”
+            Toast.makeText(DownloadService.this, "Download Failed", Toast.LENGTH_SHORT).show(); // 弹出Toast提示
+        }
+
+        @Override
+        public void onPaused() {
+            // 下载暂停，清空下载任务并显示暂停的Toast提示
+            downloadTask = null;
+            Toast.makeText(DownloadService.this, "Paused", Toast.LENGTH_SHORT).show(); // 弹出Toast提示
+        }
+
+        @Override
+        public void onCanceled() {
+            // 下载被取消，停止前台服务并清空下载任务
+            downloadTask = null; // 清空下载任务
+            stopForeground(true); // 停止前台服务
+            Toast.makeText(DownloadService.this, "Canceled", Toast.LENGTH_SHORT).show(); // 弹出Toast提示
+        }
+    };
+
+    // 自定义Binder类，用于Activity与Service之间的通信
+    private DownloadBinder mBinder = new DownloadBinder();
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return mBinder; // 返回DownloadBinder对象，允许Activity与Service之间进行通信
+    }
+
+    // 自定义Binder类，提供下载控制方法
+    class DownloadBinder extends Binder {
+        @SuppressLint("ForegroundServiceType")
+        public void startDownload(String url) {
+            // 开始下载
+            if (downloadTask == null) { // 如果当前没有正在进行的下载任务
+                downloadUrl = url; // 保存下载URL
+                downloadTask = new DownloadTask(listener); // 创建新的下载任务，并传入监听器
+                downloadTask.execute(downloadUrl); // 执行下载任务
+                startForeground(1, getNotification("Downloading...", 0)); // 开始前台服务，显示通知
+                Toast.makeText(DownloadService.this, "Downloading...", Toast.LENGTH_SHORT).show(); // 弹出Toast提示
+            }
+        }
+
+        public void pauseDownload() {
+            // 暂停下载
+            if (downloadTask != null) {
+                downloadTask.pauseDownload(); // 调用下载任务的暂停方法
+            }
+        }
+
+        public void cancelDownload() {
+            // 取消下载
+            if (downloadTask != null) {
+                downloadTask.cancelDownload(); // 调用下载任务的取消方法
+            }
+            if (downloadUrl != null) {
+                // 删除已下载的文件
+                String fileName = downloadUrl.substring(downloadUrl.lastIndexOf("/")); // 获取文件名
+                String directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getPath(); // 获取下载目录路径
+                File file = new File(directory + fileName); // 创建文件对象
+                if (file.exists()) {
+                    file.delete(); // 如果文件存在，删除文件
+                }
+                getNotificationManager().cancel(1); // 取消当前通知
+                stopForeground(true); // 停止前台服务
+                Toast.makeText(DownloadService.this, "Canceled", Toast.LENGTH_SHORT).show(); // 弹出Toast提示
+            }
+        }
+    }
+
+    // 获取NotificationManager对象
+    private NotificationManager getNotificationManager() {
+        return (NotificationManager) getSystemService(NOTIFICATION_SERVICE); // 返回系统的通知管理器
+    }
+
+    // 创建通知
+    private Notification getNotification(String title, int progress) {
+        // 创建Intent，当点击通知时打开MainActivity
+        Intent intent = new Intent(this, MainActivity.class);
+        PendingIntent pi = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        // 如果系统版本是 Android 8.0 或更高，创建通知通道
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    "default_channel_id",  // 通道 ID
+                    "Default Channel",     // 通道名称
+                    NotificationManager.IMPORTANCE_DEFAULT
+            );
+            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            manager.createNotificationChannel(channel);
+        }
+
+        // 构建通知
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, "default_channel_id"); // 使用通知通道
+        builder.setSmallIcon(R.mipmap.ic_launcher); // 设置小图标
+        builder.setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher)); // 设置大图标
+        builder.setContentIntent(pi); // 设置点击通知时的行为，打开MainActivity
+        builder.setContentTitle(title); // 设置通知标题
+        if (progress >= 0) {
+            builder.setContentText(progress + "%"); // 设置通知文本，显示下载进度
+            builder.setProgress(100, progress, false); // 设置进度条，最大值100，当前进度为progress
+        }
+        return builder.build(); // 返回构建好的通知
+    }
+
+}
+
+```
+
+```java
+
+// 主活动类，继承自AppCompatActivity，并实现了View.OnClickListener接口
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+
+    // 日志标签，用于输出日志信息
+    public static final String TAG = "MainActivity";
+    
+    // 权限请求代码
+    private static final int PERMISSION_REQUEST_CODE = 1;
+    
+    // 下载服务的绑定器，用于与下载服务进行交互
+    private DownloadService.DownloadBinder downloadBinder;
+
+    // 服务连接对象，用于绑定服务的回调
+    private ServiceConnection connection = new ServiceConnection() {
+        // 当服务连接成功时回调
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            // 将服务绑定器强制转换为DownloadBinder类型
+            downloadBinder = (DownloadService.DownloadBinder) service;
+        }
+
+        // 当服务断开连接时回调
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            // 此处可添加断开连接后的处理逻辑
+        }
+    };
+
+    // 活动创建时的回调方法
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        // 设置活动的布局文件
+        setContentView(R.layout.activity_main);
+
+        // 获取开始下载按钮，并设置点击监听器
+        Button startDownload = (Button) findViewById(R.id.start_download);
+        // 获取暂停下载按钮，并设置点击监听器
+        Button pauseDownload = (Button) findViewById(R.id.pause_download);
+        // 获取取消下载按钮，并设置点击监听器
+        Button cancelDownload = (Button) findViewById(R.id.cancel_download);
+
+        // 为按钮设置点击事件监听器
+        startDownload.setOnClickListener(this);
+        pauseDownload.setOnClickListener(this);
+        cancelDownload.setOnClickListener(this);
+
+        // 创建启动下载服务的意图
+        Intent intent = new Intent(this, DownloadService.class);
+        // 启动下载服务
+        startService(intent);
+        // 绑定服务，确保活动与服务能够交互
+        bindService(intent, connection, BIND_AUTO_CREATE);
+
+        // 检查应用是否具有写入外部存储的权限
+        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            // 如果没有权限，请求权限
+            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+        }
+    }
+
+    // 点击事件处理方法
+    @Override
+    public void onClick(View v) {
+        // 如果downloadBinder为空，说明服务尚未绑定成功，直接返回
+        if (downloadBinder == null) {
+            return;
+        }
+
+        // 根据点击的按钮执行相应的操作
+        if (v.getId() == R.id.start_download) {
+            // 开始下载按钮被点击
+            String url = "https://raw.githubusercontent.com/guolindev/eclipse/master/eclipse-inst-win64.exe";
+            // 调用下载服务开始下载
+            downloadBinder.startDownload(url);
+        } else if (v.getId() == R.id.pause_download) {
+            // 暂停下载按钮被点击
+            downloadBinder.pauseDownload();
+        } else if (v.getId() == R.id.cancel_download) {
+            // 取消下载按钮被点击
+            downloadBinder.cancelDownload();
+        }
+    }
+
+    // 权限请求结果的回调方法
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults, int deviceId) {
+        // 根据请求码处理权限请求结果
+        switch (requestCode) {
+            case 1:
+                // 如果用户拒绝了权限申请
+                if (grantResults.length > 0 && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                    // 提示用户权限被拒绝
+                    Toast.makeText(this, "拒绝权限将无法使用程序", Toast.LENGTH_SHORT).show();
+                    // 退出活动
+                    finish();
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    // 活动销毁时的回调方法
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // 解除服务绑定，释放资源
+        unbindService(connection);
+    }
+}
+```
+
+```java
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+```
+
+---
+
+
+
+## Material Design设计原则
+
+### Toolbar(标题栏)
+
+1.设置主题为Theme.AppCompat.Light.NoActionBar(淡色主题)
+
+2.在activity_main.xml用Toolbar替代ActionBar
+
+3.在menu下创建一个toolbar.xml文件,并设计相应item
+
+4.在Mainactivity获取toolbar实例并设置点击事件
+
+![img](images/AppTheme.png)
+
+```xml
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.MaterialTest" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- Customize your light theme here. -->
+        <item name="colorPrimary">#F2B3C8</item>
+        <item name="colorAccent">#F2B4C9</item>
+        <item name="colorPrimaryVariant">#F492B4</item>
+        <item name="colorOnPrimary">#C77E99</item>
+        <!-- Secondary brand color. -->
+        <item name="colorSecondary">#EFA2BC</item>
+        <item name="colorSecondaryVariant">#E7155B</item>
+        <item name="colorOnSecondary">#CCCE7F7F</item>
+        <!-- Status bar color. -->
+        <item name="android:statusBarColor" tools:targetApi="l">#F6D3D3</item>
+    </style>
+
+    <style name="Theme.MaterialTest" parent="Base.Theme.MaterialTest" />
+</resources>
+```
+
+```xml
+<androidx.appcompat.widget.Toolbar
+                android:id="@+id/toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                android:background="?attr/colorPrimary"
+                android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+                app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
+                app:layout_scrollFlags="scroll|enterAlways|snap"/>
+
+```
+
+```java
+ Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
+@Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId()==R.id.backup){
+            Toast.makeText(this, "You clicked Backup", Toast.LENGTH_SHORT).show();
+        } else if (item.getItemId()==R.id.delete) {
+            Toast.makeText(this, "You clicked Delete", Toast.LENGTH_SHORT).show();
+        } else if (item.getItemId()==R.id.settings) {
+            Toast.makeText(this, "You clicked Settings", Toast.LENGTH_SHORT).show();
+        } else if (item.getItemId()==android.R.id.home) {
+            mDrawerLayout.openDrawer(GravityCompat.START);
+        }
+        return true;
+    }
+```
+
+```toolbar.xml
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:tools="http://schemas.android.com/tools"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/menu1"
+        android:icon="@drawable/nav_friends"
+        android:title="Mune"
+        app:showAsAction="always" />
+
+    <item
+        android:id="@+id/backup"
+        android:icon="@drawable/ic_backup"
+        android:title="Backup"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/delete"
+        android:icon="@drawable/ic_delete"
+        android:title="Delete"
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/settings"
+        android:icon="@drawable/ic_settings"
+        android:title="Settings"
+        app:showAsAction="never" />
+</menu>
+```
+
+
+
+### 滑动菜单
+
+#### DrawerLayout控件
+
+1.在activity_main.xml添加DrawerLayout
+
+2.在MainActivity添加一个导航按钮
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.drawerlayout.widget.DrawerLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/drawer_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+```
+
+```java
+// DrawerLayout对象
+private DrawerLayout mDrawerLayout;
+
+ mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
+           // 获取ActionBar对象
+        ActionBar actionBar = getSupportActionBar();
+        if (actionBar != null) {
+            // 显示HomeAsUp按钮
+            actionBar.setDisplayHomeAsUpEnabled(true);
+            // 设置HomeAsUp按钮的图标
+            // actionBar.setHomeAsUpIndicator(R.drawable.ic_menu);
+        }
+
+} else if (item.getItemId() == android.R.id.home) {
+            // 打开DrawerLayout
+            mDrawerLayout.openDrawer(GravityCompat.START);
+        }
+```
+
+
+
+#### NavigationView(滑动菜单页面)
+
+1.导入依赖库
+
+2.在menu下创建nav_menu.xml文件,并设计相应item
+
+3.在layout下创建一个nav_header.xml文件(头像区)
+
+4.在activity_main.xml使用NavigationView
+
+5.创建点击事件
+
+```gradle
+implementation("de.hdodenhof:circleimageview:2.1.0")
+    implementation("androidx.core:core:1.13.0")
+```
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:checkableBehavior="single">
+
+        <item
+            android:id="@+id/nav_call"
+            android:icon="@drawable/nav_call"
+            android:title="Call"/>
+        <item
+            android:id="@+id/nav_friends"
+            android:icon="@drawable/nav_friends"
+            android:title="Friends"/>
+        <item
+            android:id="@+id/location"
+            android:icon="@drawable/nav_location"
+            android:title="Location"/>
+        <item
+            android:id="@+id/nav_task"
+            android:icon="@drawable/nav_task"
+            android:title="Task"/>
+
+    </group>
+</menu>
+```
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="180dp"
+    android:padding="10dp"
+    android:background="?attr/colorPrimary"
+    tools:ignore="ExtraText">
+
+    <de.hdodenhof.circleimageview.CircleImageView
+        android:id="@+id/icon_image"
+        android:layout_width="70dp"
+        android:layout_height="70dp"
+        android:src="@drawable/nav_icon"
+        android:layout_centerInParent="true" />
+
+
+    <TextView
+        android:id="@+id/mail"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:text="240236946@qq.com"
+        android:textColor="#FFF"
+        android:textSize="14sp"/>
+
+    <TextView
+        android:id="@+id/username"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/mail"
+        android:text="左红柊"
+        android:textColor="#FFF"
+        android:textSize="14sp"/>
+
+</RelativeLayout>
+```
+
+```xml
+ <com.google.android.material.navigation.NavigationView
+        android:id="@+id/nav_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        app:menu="@menu/nav_menu"
+        app:headerLayout="@layout/nav_header"
+        tools:ignore="MissingClass" />
+```
+
+```java
+ // 获取NavigationView对象
+        NavigationView navView = (NavigationView) findViewById(R.id.nav_view);
+
+ // 设置NavigationView的选中项
+        navView.setCheckedItem(R.id.nav_call);
+
+        // 设置NavigationView的点击事件
+        navView.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener() {
+            @Override
+            public boolean onNavigationItemSelected(MenuItem menuItem) {
+                // 关闭DrawerLayout
+                mDrawerLayout.closeDrawers();
+                return true;
+            }
+        });
+```
+
+
+
+### 悬浮按钮和可交互显示
+
+#### FloatingActionButton
+
+1.在activity_main.xml
+
+2.设置点击事件
+
+```xml
+<com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fab"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="16dp"
+            android:src="@android:drawable/ic_input_add"
+            android:contentDescription="添加"
+            app:tint="#E27298"
+            app:elevation="8dp" /> //投影高度
+```
+
+```java
+  // 获取FloatingActionButton对象
+        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+
+        // 设置FloatingActionButton的点击事件
+        fab.setOnClickListener(v -> {
+            // 显示Snackbar
+            Snackbar.make(v, "Data deleted", Snackbar.LENGTH_SHORT).setAction("Undo", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    // 显示Toast
+                    Toast.makeText(MainActivity.this, "Data restored", Toast.LENGTH_SHORT).show();
+                }
+            }).show();
+        });
+```
+
+
+
+#### Snackbar(可交互的Toast)
+
+```java
+// 设置FloatingActionButton的点击事件
+        fab.setOnClickListener(v -> {
+            // 显示Snackbar
+            Snackbar.make(v, "Data deleted", Snackbar.LENGTH_SHORT).setAction("Undo", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    // 显示Toast
+                    Toast.makeText(MainActivity.this, "Data restored", Toast.LENGTH_SHORT).show();
+                }
+            }).show();
+        });
+```
+
+
+
+#### CoordinatorLayout(加强版FrameLayout)
+
+```xml
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <com.google.android.material.appbar.AppBarLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <androidx.appcompat.widget.Toolbar
+                android:id="@+id/toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                android:background="?attr/colorPrimary"
+                android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+                app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
+                app:layout_scrollFlags="scroll|enterAlways|snap"/>
+
+            </com.google.android.material.appbar.AppBarLayout>
+
+
+
+
+
+
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/swipe_refresh"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:layout_behavior="@string/appbar_scrolling_view_behavior"
+            tools:ignore="MissingClass">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler_view"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"/>
+
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fab"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="16dp"
+            android:src="@android:drawable/ic_input_add"
+            android:contentDescription="添加"
+            app:tint="#E27298"
+            app:elevation="8dp" />
+
+
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
+```
+
+
+
+### 卡片式布局
+
+#### CardView(提供圆角与阴影等效果)
+
+1.添加依赖库(CardView与RecyclerView)
+
+2.在activity_main.xml调用RecyclerView
+
+3.定义一个实体类(构造方法Fruit)与一个自定义布局(Fruit_item.xml)
+
+4.创建RecyclerView适配器
+
+5.在MainActivity展示卡片
+
+```gradle
+implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation("androidx.cardview:cardview:1.0.0")
+```
+
+```xml
+<androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler_view"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"/>
+```
+
+```java
+package com.example.materialtest;
+
+public class Fruit {
+    private String name;
+    private  int imageId;
+
+    public Fruit(String name,int imageId){
+        this.name=name;
+        this.imageId=imageId;
+    }
+    public String getName() {
+        return name;
+    }
+
+    public int getImageId() {
+        return imageId;
+    }
+
+}
+
+```
+
+``` xml
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_margin="5dp"
+    app:cardCornerRadius="4dp">
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" >
+        <ImageView
+            android:id="@+id/fruit_image"
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:scaleType="centerCrop"
+            />
+        <TextView
+            android:id="@+id/fruit_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_margin="5dp"
+            android:textSize="16sp"
+            />
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>
+```
+
+```java
+public class FruitAdapter extends RecyclerView.Adapter<FruitAdapter.ViewHolder> {
+
+    // 上下文对象
+    private Context mContext;
+
+    // 水果列表
+    private List<Fruit> mFruitList;
+
+    /**
+     * ViewHolder类，负责显示单个水果的信息。
+     */
+    static class ViewHolder extends RecyclerView.ViewHolder {
+        // 卡片视图
+        CardView cardView;
+
+        // 水果图片
+        ImageView fruitImage;
+
+        // 水果名称
+        TextView fruitName;
+
+        /**
+         * 构造函数，初始化视图。
+         *
+         * @param view 视图对象
+         */
+        public ViewHolder(View view) {
+            super(view);
+            // 获取卡片视图
+            cardView = (CardView) view;
+
+            // 获取水果图片
+            fruitImage = (ImageView) view.findViewById(R.id.fruit_image);
+
+            // 获取水果名称
+            fruitName = (TextView) view.findViewById(R.id.fruit_name);
+        }
+    }
+
+    /**
+     * 构造函数，初始化水果列表。
+     *
+     * @param fruitList 水果列表
+     */
+    public FruitAdapter(List<Fruit> fruitList) {
+        // 初始化水果列表
+        mFruitList = fruitList;
+    }
+
+    /**
+     * 创建ViewHolder对象。
+     *
+     * @param parent  父视图
+     * @param viewType 视图类型
+     * @return ViewHolder对象
+     */
+    @NonNull
+    @Override
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        // 如果上下文对象为空，则获取父视图的上下文
+        if (mContext == null) {
+            mContext = parent.getContext();
+        }
+
+        // 获取视图
+        View view = LayoutInflater.from(mContext).inflate(R.layout.fruit_item, parent, false);
+
+        // 创建ViewHolder对象
+        final ViewHolder holder = new ViewHolder(view);
+
+        // 设置卡片视图的点击事件
+        holder.cardView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // 获取当前位置
+                int position = holder.getAdapterPosition();
+
+                // 获取当前水果
+                Fruit fruit = mFruitList.get(position);
+
+                // 创建意图
+                Intent intent = new Intent(mContext, FruitActivity.class);
+
+                // 设置意图的参数
+                intent.putExtra(FruitActivity.FRUIT_NAME, fruit.getName());
+                intent.putExtra(FruitActivity.FRUIT_IMAGE_ID, fruit.getImageId());
+
+                // 启动活动
+                mContext.startActivity(intent);
+            }
+        });
+
+        // 返回ViewHolder对象
+        return holder;
+    }
+
+    /**
+     * 绑定数据到ViewHolder对象。
+     *
+     * @param holder ViewHolder对象
+     * @param position 位置
+     */
+    @Override
+    public void onBindViewHolder(@NonNull FruitAdapter.ViewHolder holder, int position) {
+        // 获取当前水果
+        Fruit fruit = mFruitList.get(position);
+
+        // 设置水果名称
+        holder.fruitName.setText(fruit.getName());
+
+        // 加载水果图片
+        Glide.with(mContext).load(fruit.getImageId()).into(holder.fruitImage);
+    }
+
+    /**
+     * 获取数据项数量。
+     *
+     * @return 数据项数量
+     */
+    @Override
+    public int getItemCount() {
+        // 返回水果列表的大小
+        return mFruitList.size();
+    }
+}
+```
+
+```java
+private Fruit[] fruits = new Fruit[]{
+            new Fruit("劳左福利套餐_黑暗系劳左", R.drawable.nav_icon),
+            new Fruit("劳左福利套餐_白月光劳左", R.drawable.banana),
+            new Fruit("劳左福利套餐_小仙女劳左", R.drawable.orange)
+    };
+
+    // 水果列表
+    private List<Fruit> fruitList = new ArrayList<>();
+
+    // 适配器
+    private FruitAdapter adapter;
+
+
+//OnCreate()
+// 初始化水果数据
+        initFruits();
+
+        // 获取RecyclerView对象
+        RecyclerView recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
+
+        // 设置RecyclerView的布局管理器
+        GridLayoutManager layoutManager = new GridLayoutManager(this, 2);
+        recyclerView.setLayoutManager(layoutManager);
+
+        // 设置RecyclerView的适配器
+        adapter = new FruitAdapter(fruitList);
+        recyclerView.setAdapter(adapter);
+
+
+ /**
+     * 初始化水果数据。
+     */
+    private void initFruits() {
+        // 清空水果列表
+        fruitList.clear();
+
+        // 生成50个随机水果
+        for (int i = 0; i < 50; i++) {
+            Random random = new Random();
+            int index = random.nextInt(fruits.length);
+            fruitList.add(fruits[index]);
+        }
+    }
+
+```
+
+
+
+#### AppBarLayout(垂直方向上的Linearlayout,滚动事件的封装)
+
+1.将Toolbar嵌套到AppBarLayout
+
+2.给RecyclerView指定一个布局行为
+
+3.在activity_main.xml添加app:layout_scrollFlags="scroll|enterAlways|snap"(滑动时隐藏Toolbar)
+
+```xml
+<com.google.android.material.appbar.AppBarLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <androidx.appcompat.widget.Toolbar
+                android:id="@+id/toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                android:background="?attr/colorPrimary"
+                android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+                app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
+                app:layout_scrollFlags="scroll|enterAlways|snap"/>
+
+            </com.google.android.material.appbar.AppBarLayout>
+```
+
+```xml
+ // androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+
+app:layout_behavior="@string/appbar_scrolling_view_behavior"
+```
+
+```xml
+app:layout_scrollFlags="scroll|enterAlways|snap"
+```
+
+
+
+### 下拉刷新
+
+1.在activity_main.xml中实现SwipeRefreshLayout核心类
+
+2.在MainActivity处理刷新逻辑
+
+```xml
+<androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/swipe_refresh"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:layout_behavior="@string/appbar_scrolling_view_behavior"
+            tools:ignore="MissingClass">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler_view"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"/>
+
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+```
+
+```java
+private SwipeRefreshLayout swipeRefresh;
+
+ // 获取SwipeRefreshLayout对象
+        swipeRefresh = (SwipeRefreshLayout) findViewById(R.id.swipe_refresh);
+
+        // 设置SwipeRefreshLayout的颜色
+        swipeRefresh.setColorSchemeResources(R.color.pink);
+
+        // 设置SwipeRefreshLayout的刷新监听器
+        swipeRefresh.setOnRefreshListener(() -> refreshFruits());
+    }
+
+    /**
+     * 刷新水果数据。
+     */
+    private void refreshFruits() {
+        // 创建线程
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    // 等待1秒
+                    Thread.sleep(999);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                // 刷新UI
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        // 初始化水果数据
+                        initFruits();
+                        // 通知适配器更新数据
+                        adapter.notifyDataSetChanged();
+                        // 停止SwipeRefreshLayout的刷新
+                        swipeRefresh.setRefreshing(false);
+                    }
+                });
+            }
+        }).start();
+    }
+
+```
+
+
+
+### 可折叠式标题栏
+
+#### CollapsingToolbarLayout(作用于Toolbar之上的布局)
+
+1.设置FruitActivity作为详情展示界面
+
+2.修改activity_fruit.xml
+
+3.在AppBarLayout嵌套一个CollapsingToolbarLayout
+
+4.在FruitActivity编写功能逻辑
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/appBar"
+        android:layout_width="match_parent"
+        android:layout_height="250dp"
+        android:fitsSystemWindows="true">
+
+        <com.google.android.material.appbar.CollapsingToolbarLayout
+            android:id="@+id/collapsing_toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+            android:fitsSystemWindows="true"
+            app:contentScrim="?attr/colorPrimary"
+            app:layout_scrollFlags="scroll|exitUntilCollapsed">
+
+            <ImageView
+                android:id="@+id/fruit_image_view"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:fitsSystemWindows="true"
+                app:layout_collapseMode="parallax" />
+
+            <androidx.appcompat.widget.Toolbar
+                android:id="@+id/toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                app:layout_collapseMode="pin" />
+
+        </com.google.android.material.appbar.CollapsingToolbarLayout>
+
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="15dp"
+                android:layout_marginLeft="15dp"
+                android:layout_marginRight="15dp"
+                android:layout_marginTop="35dp"
+                app:cardCornerRadius="4dp">
+
+                <TextView
+                    android:id="@+id/fruit_content_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="10dp" />
+
+            </androidx.cardview.widget.CardView>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:src="@drawable/ic_backup"
+        app:layout_anchor="@id/appBar"
+        app:layout_anchorGravity="bottom|end" />
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
+```
+
+```java
+public class FruitActivity extends AppCompatActivity {
+
+    // 水果名称的意图键值
+    public static final String FRUIT_NAME = "fruit_name";
+
+    // 水果图片ID的意图键值
+    public static final String FRUIT_IMAGE_ID = "fruit_image_id";
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        // 调用父类的onCreate方法
+        super.onCreate(savedInstanceState);
+
+        // 设置布局文件
+        setContentView(R.layout.activity_fruit);
+
+        // 获取意图
+        Intent intent = getIntent();
+
+        // 获取水果名称和图片ID
+        String fruitName = intent.getStringExtra(FRUIT_NAME);
+        int fruitImageId = intent.getIntExtra(FRUIT_IMAGE_ID, 0);
+
+        // 获取Toolbar和CollapsingToolbarLayout
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        CollapsingToolbarLayout collapsingToolbar = (CollapsingToolbarLayout) findViewById(R.id.collapsing_toolbar);
+
+        // 获取水果图片和内容文本
+        ImageView fruitImageView = (ImageView) findViewById(R.id.fruit_image_view);
+        TextView fruitContentText = (TextView) findViewById(R.id.fruit_content_text);
+
+        // 设置Toolbar为ActionBar
+        setSupportActionBar(toolbar);
+
+        // 获取ActionBar
+        ActionBar actionBar = getSupportActionBar();
+
+        // 如果ActionBar不为空，则显示返回按钮
+        if (actionBar != null) {
+            actionBar.setDisplayHomeAsUpEnabled(true);
+        }
+
+        // 设置CollapsingToolbarLayout的标题
+        collapsingToolbar.setTitle(fruitName);
+
+        // 加载水果图片
+        Glide.with(this).load(fruitImageId).into(fruitImageView);
+
+        // 生成水果内容文本
+        String fruitContent = generateFruitContent(fruitName);
+
+        // 设置水果内容文本
+        fruitContentText.setText(fruitContent);
+    }
+
+    /**
+     * 生成水果内容文本。
+     *
+     * @param fruitName 水果名称
+     * @return 水果内容文本
+     */
+    private String generateFruitContent(String fruitName) {
+        // 创建StringBuilder对象
+        StringBuilder fruitContent = new StringBuilder();
+
+        // 生成500个水果名称
+        for (int i = 0; i < 500; i++) {
+            fruitContent.append(fruitName);
+        }
+
+        // 返回水果内容文本
+        return fruitContent.toString();
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        // 判断是否是返回按钮
+        switch (item.getItemId()) {
+            case android.R.id.home:
+                // 如果是返回按钮，则finish当前活动
+                finish();
+                return true;
+        }
+
+        // 如果不是返回按钮，则调用父类的onOptionsItemSelected方法
+        return super.onOptionsItemSelected(item);
+    }
+}
+
+```
+
+
+
+#### 充分利用系统空间状态栏
+
+1.使用android:fitsSystemWindows="true"
+
+2.在values-v21创建一个styles.xml
+
+3.创建values的styles.xml
+
+4.在AndroidManifest.xml应用FruitActivityTheme主题
+
+```xml
+android:fitsSystemWindows="true"
+```
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">@color/pink</item>
+        <item name="colorPrimaryDark">@color/pink</item>
+        <item name="colorAccent">@color/pink</item>
+    </style>
+    <style name="FruitActivityTheme" parent="AppTheme">
+    </style>
+</resources>
+```
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+
+<resources>
+    <style name="FruitActivityTheme" parent="AppTheme">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+    </style>
+</resources>
+```
+
+---
+
+
+
+## 使用Intent传递对象
+
+### 一、Serializable（Java 原生接口）
+
+#### 1. 核心特点
+
+- **简单易用**：仅需实现接口，无需额外代码。
+- **性能一般**：依赖反射机制，序列化和反序列化速度较慢。
+- **适用场景**：数据存储到文件、网络传输等对性能要求不高的场景。
+
+#### 2. 实现步骤
+
+```
+import java.io.Serializable;
+
+public class User implements Serializable {
+    // 建议手动指定 serialVersionUID（避免类结构修改时反序列化失败）
+    private static final long serialVersionUID = 1L;
+    
+    private String name;
+    private int age;
+
+    // 构造方法、Getter/Setter...
+}
+```
+
+#### 3. 序列化与反序列化
+
+```
+// 发送方
+Intent intent = new Intent(this, TargetActivity.class);
+intent.putExtra("user_data", user);
+startActivity(intent);
+
+// 接收方
+User user = getIntent().getSerializableExtra("user_data");
+```
+
+------
+
+### 二、Parcelable（Android 专用接口）
+
+#### 1. 核心特点
+
+- **高效**：基于内存的二进制流操作，速度极快。
+- **复杂实现**：需要手动编写序列化/反序列化逻辑。
+- **适用场景**：内存中数据传输（如 Activity 间传递对象）。
+
+#### 2. 实现步骤
+
+```
+import android.os.Parcel;
+import android.os.Parcelable;
+
+public class User implements Parcelable {
+    private String name;
+    private int age;
+
+    // 构造方法、Getter/Setter...
+
+    // 反序列化逻辑（从 Parcel 构造对象）
+    protected User(Parcel in) {
+        name = in.readString();
+        age = in.readInt();
+    }
+
+    // 序列化逻辑（将对象写入 Parcel）
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(name);
+        dest.writeInt(age);
+    }
+
+    // 描述内容（通常返回 0）
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    // 创建 Creator 静态字段（必须）
+    public static final Creator<User> CREATOR = new Creator<User>() {
+        @Override
+        public User createFromParcel(Parcel in) {
+            return new User(in);
+        }
+
+        @Override
+        public User[] newArray(int size) {
+            return new User[size];
+        }
+    };
+}
+```
+
+#### 3. 在 Activity 间传递对象
+
+```
+// 发送方
+Intent intent = new Intent(this, TargetActivity.class);
+intent.putExtra("user_data", user);
+startActivity(intent);
+
+// 接收方
+User user = getIntent().getParcelableExtra("user_data");
+```
+
+------
+
+### 三、对比与选型建议
+
+| **特性**             | Serializable   | Parcelable           |
+| :------------------- | :------------- | :------------------- |
+| **实现复杂度**       | 简单（自动）   | 复杂（手动编写代码） |
+| **性能**             | 低（反射机制） | 高（直接内存操作）   |
+| **适用场景**         | 存储/网络传输  | 内存中数据传输       |
+| **Android 系统支持** | 支持           | 仅限 Android         |
+
+- **选型原则**：
+  - 需要跨平台或持久化存储 → **Serializable**。
+  - Android 内存高效传输（如 Intent/Bundle） → **Parcelable**。
+- **优化技巧**：
+  - 使用 Kotlin 的 `@Parcelize` 注解可自动生成 Parcelable 代码。
+  - 对复杂对象考虑使用 `Bundle` 或第三方库（如 Gson + Serializable）。
+
+---
+
+
+
+## 全局获取Context
+
+1.定制一个Application类MyApplication
+
+2.在AndroidManifest.xml对其进行指定
+
+3.在需要的地方调用
+
+```java
+public class MyApplication extends Application {
+    private static Context context;
+    public void onCreate() {
+        super.onCreate();
+        context = getApplicationContext();
+    }
+    public static Context getContext() {
+        return context;
+    }
+}
+```
+
+```xml
+<application
+        android:name="com.example.materialtest.MyApplication"
+```
+
+```java
+ Toast.makeText(MyApplication.getContext(), "You clicked Backup", Toast.LENGTH_SHORT).show();
+```
+
+---
+
+
+
+## 定制日志工具
+
+1.新建一个LogUtil类
+
+2.用LogUtil打印日志
+
+```java
+public class LogUtil {
+    public static final int VERBOSE = 1;
+    public static final int DEBUG = 2;
+    public static final int INFO = 3;
+    public static final int WARN = 4;
+    public static final int ERROR = 5;
+    public static final int NOTHING = 6;
+    public static final int LEVEL = VERBOSE; // 设定日志显示级别
+
+    public static void v(String tag, String msg) {
+        if (LEVEL <= VERBOSE) {
+            Log.v(tag, msg);
+        }
+    }
+    public static void d(String tag, String msg) {
+        if (LEVEL <= DEBUG) {
+            Log.d(tag, msg);
+        }
+    }
+    public static void i(String tag, String msg) {
+        if (LEVEL <= INFO) {
+            Log.i(tag, msg);
+        }
+    }
+    public static void w(String tag, String msg) {
+        if (LEVEL <= WARN) {
+            Log.w(tag, msg);
+        }
+    }
+    public static void e(String tag, String msg) {
+        if (LEVEL <= ERROR) {
+            Log.e(tag, msg);
+        }
+    }
+}
+
+```
+
+```java
+LogUtil.d("MainActivity", "You clicked Delete");
+```
+
+---
+
+
+
+## 多窗口模式
+
+#### 1.取消进入多窗口时活动的重新创建
+
+```xml
+android:configChanges="orientation|keyboardHidden|screenSize|screenLayout">
+```
+
+#### 2.禁用多窗口模式
+
+```xml
+android:resizeableActivity="false">
+```
 
