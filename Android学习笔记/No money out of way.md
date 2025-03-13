@@ -1680,6 +1680,7 @@ Android的内容提供器（Content Provider）是四大组件之一，用于在
 
 ```java
 import android.Manifest;
+
 public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
