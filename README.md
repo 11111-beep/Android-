@@ -3,4 +3,5 @@ Android开发小白从2024年12月6号进入移动开发组学习Android开发,�
 鄙人坚持求真务实,目标大厂offer.
 有写的不好的地方还请大家多多包涵.
 
-![57F21D2B3CD2146F5827127A854CB467](https://github.com/user-attachments/assets/9721bd4f-0e6c-4a82-8960-00ab7601e99e)
+![hqw](https://github.com/user-attachments/assets/c92f56ec-eac1-405b-b38a-4f72ef95d6ed)
+
