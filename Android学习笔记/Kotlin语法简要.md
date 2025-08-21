@@ -234,6 +234,18 @@ Singleton.singletonTest() // 调用
 
 ## 7.Lambda编程
 
+
+
+### 🔹常见使用场景总览
+
+| 场景         | 描述                          | 示例                                        |
+| ------------ | ----------------------------- | ------------------------------------------- |
+| 1️⃣ 集合操作   | `map`、`filter`、`forEach` 等 | `list.filter { it.isNotEmpty() }`           |
+| 2️⃣ 事件监听   | 点击、输入等                  | `button.setOnClickListener { showToast() }` |
+| 3️⃣ 函数参数   | 高阶函数传入行为              | `repeat(5) { println("Hello") }`            |
+| 4️⃣ 线程/协程  | 简化异步任务                  | `Thread { doWork() }.start()`               |
+| 5️⃣ 自定义回调 | 封装逻辑，暴露接口            | `fetchData { result -> println(result) }`   |
+
 ### 🔹 集合的创建与遍历
 
 **List**
@@ -560,8 +572,6 @@ fun main() {
 
 ## 11.定义静态方法(不需要实例就可以调用的方法)
 
-
-
 ### 🔹 运用注解
 
 ```kotlin
@@ -810,7 +820,7 @@ inline fun execute(crossinline block: () -> Unit) {
 **简化SharedPreferences**
 
 ```kotlin
-getSharedPreferences("data",Context.MODE_PRIVATE),edit {
+getSharedPreferences("data",Context.MODE_PRIVATE).edit {
     putString("name", "Tom")
     putInt("age", 28)
     putBoolean("married", false)
@@ -887,10 +897,11 @@ class MyClass {
 
 
 
-## 20.类委托
+## 20.类 
 
 **概念：**
- 类委托是 Kotlin 提供的一种设计模式，可以将接口的实现委托给另一个对象。也就是说，当一个类需要实现某个接口时，可以将接口中的部分或全部方法调用转交给另一个对象处理，从而实现代码复用和职责分离。
+
+类委托是 Kotlin 提供的一种设计模式，可以将接口的实现委托给另一个对象。也就是说，当一个类需要实现某个接口时，可以将接口中的部分或全部方法调用转交给另一个对象处理，从而实现代码复用和职责分离。
 
 **用途：**
 
@@ -1157,8 +1168,6 @@ interface Producer<out T> {
   - `List<T>`（`List<Dog>` 可以赋值给 `List<Animal>`）
   - `Sequence<T>`
 
-## 
-
 ### **🔹 什么是逆变？**
 
 **逆变允许父类型泛型对象赋值给子类型泛型对象**，但泛型类型参数**只能作为输入参数，不能作为返回值**。
@@ -1308,7 +1317,7 @@ suspend fun fetchDataFromNetwork(): String {
 ```
 
 - **`runBlocking`**：用于启动一个协程并阻塞当前线程，通常在顶层函数中使用来启动协程。
-- **`suspend`**：修饰挂起函数，表示该函数可以挂起协程并且恢复执行。
+- **`suspend`**：修饰挂起函数，将该该函数挂起使其可以在**runBlocking**协程作用域中调用。
 - **`delay`**：不会阻塞线程，它只会挂起当前协程。
 
 #### **(4)使用不同的协程作用域**

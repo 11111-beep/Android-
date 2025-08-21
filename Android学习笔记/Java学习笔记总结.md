@@ -133,7 +133,7 @@ public static void 方法名(){
 **示例**：
 
 ```
-java复制代码class BankAccount {
+class BankAccount {
     private double balance; // 私有属性，外部无法直接访问
 
     public BankAccount(double initialBalance) {
